@@ -9,6 +9,7 @@ venv/
 *.log
 .logs/
 .sessions/
+/plan.md
 
 # Model weights and vendored sources — restore with: python downloader.py
 checkpoints/

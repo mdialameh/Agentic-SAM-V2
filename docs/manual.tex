@@ -1,0 +1,547 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amssymb}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{asamblue}{RGB}{31,90,140}
+\definecolor{asamgrey}{RGB}{95,105,115}
+\definecolor{codebg}{RGB}{245,246,248}
+\definecolor{warnbg}{RGB}{255,246,230}
+\definecolor{warnline}{RGB}{204,132,0}
+\definecolor{tipbg}{RGB}{237,247,240}
+\definecolor{tipline}{RGB}{46,125,80}
+
+\titleformat{\section}{\Large\bfseries\color{asamblue}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries\color{asamblue}}{\thesubsection}{0.7em}{}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{asamgrey!40},
+  breaklines=true,
+  columns=fullflexible,
+  xleftmargin=0.4em,
+  framexleftmargin=0.4em,
+  literate={-}{{-}}1 {~}{{\textasciitilde}}1
+}
+
+\newtcolorbox{warnbox}{colback=warnbg,colframe=warnline,boxrule=0.8pt,
+  left=6pt,right=6pt,top=5pt,bottom=5pt}
+\newtcolorbox{tipbox}{colback=tipbg,colframe=tipline,boxrule=0.8pt,
+  left=6pt,right=6pt,top=5pt,bottom=5pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{asamgrey}Agentic-SAM v2 --- User Manual}
+\rhead{\small\color{asamgrey}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\newcommand{\ui}[1]{\textbf{#1}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries\color{asamblue} Agentic-SAM v2\par}
+\vspace{0.6cm}
+{\LARGE An AI Assistant for Ultrasound-Guided\\[0.2cm] Radiofrequency Ablation of PTMC\par}
+\vspace{1.2cm}
+{\large User Manual\par}
+\vspace{2cm}
+{\large\itshape Real-time PTMC segmentation and tracking $\cdot$ ablation-coverage
+monitoring $\cdot$ conversational surgical assistance\par}
+\vfill
+\begin{warnbox}
+\textbf{Intended use.} This software is a research and workflow-prototyping tool.
+It provides \emph{decision support only}. It does not diagnose, does not measure
+thermal ablation, and must never be used as the sole basis for an
+intraoperative decision. Every overlay, measurement, and report must be
+verified visually by the operating surgeon.
+\end{warnbox}
+\vspace{1cm}
+{\large\today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%=======================================================================
+\section{What This Application Does}
+%=======================================================================
+
+Agentic-SAM v2 is an AI assistant that watches the intraoperative ultrasound
+stream alongside the surgeon during radiofrequency ablation (RFA) of a
+papillary thyroid microcarcinoma (PTMC). The surgeon marks the lesion once;
+from that moment the system segments and follows it frame by frame, measures
+how the visible target changes, keeps a timestamped record of the procedure,
+and answers questions in natural language --- all on local hardware, with no
+patient data leaving the machine.
+
+\subsection{Feature Summary}
+
+\begin{longtable}{@{}p{4.6cm}p{10.4cm}@{}}
+\toprule
+\textbf{Feature} & \textbf{What it does} \\
+\midrule
+\endhead
+Click-to-segment targeting &
+The surgeon pauses the video on any frame and clicks the PTMC. MedSAM2
+segments it on that frame immediately. \\
+\addlinespace
+Continuous lesion tracking &
+Playback resumes with the segmentation overlaid, updated on every subsequent
+frame, so the lesion stays outlined while the probe and anatomy move. \\
+\addlinespace
+Live AI monitor &
+Every few seconds a short situational note appears: tracking stability, size
+changes, and what may be worth re-checking visually. \\
+\addlinespace
+Ablation-coverage monitoring &
+The first segmented frame is stored as the baseline lesion. Coverage and
+residual percentages are computed continuously as ablation proceeds. \\
+\addlinespace
+Size-drop alerts &
+When the visible target shrinks substantially relative to the session
+maximum, an alert is written to the procedure log with an estimated
+percentage. \\
+\addlinespace
+Conversational assistance &
+Questions can be asked at any time, about the current frame or the procedure
+so far. Tracking pauses while the assistant answers, then resumes. \\
+\addlinespace
+Text-prompted segmentation &
+Structures can also be segmented from a phrase such as \code{thyroid nodule}
+or \code{ablation zone}, without drawing a box. \\
+\addlinespace
+Procedure event log &
+Phase changes, tracking events, alerts, snapshots, and questions are recorded
+with timestamps and the RFA phase in force. \\
+\addlinespace
+Ablation report &
+One button produces an illustrated report: baseline lesion, final ablation
+pattern, coverage over time, residual assessment, limitations. \\
+\addlinespace
+Session summary note &
+A separate button drafts a structured technical summary of the whole session
+from the event log. \\
+\bottomrule
+\end{longtable}
+
+\subsection{How an RFA Surgeon Benefits}
+
+\paragraph{The target stays outlined while you work.}
+PTMC lesions are small and low-contrast, and during ablation the picture
+degrades: gas and hyperechoic change obscure margins, and probe pressure
+shifts the plane. Marking the lesion once and having it outlined continuously
+reduces the effort of repeatedly re-identifying it on a changing image.
+
+\paragraph{Coverage becomes visible instead of remembered.}
+Judging which parts of a lesion have already been treated is normally done
+from memory of where the electrode has been. The system accumulates a
+\emph{coverage map} across the whole session and reports the percentage of the
+baseline lesion that appears treated and the percentage that does not ---
+turning a mental tally into an explicit, reviewable picture.
+
+\paragraph{Residual regions are pointed out, not just counted.}
+If part of the baseline lesion never shows the change associated with
+treatment, it is highlighted in red on the ablation map and its location is
+described in the report --- a prompt to visually re-check that region before
+finishing.
+
+\paragraph{An assistant that answers rather than distracts.}
+Questions such as ``how much is ablated?'' or ``did I cover the whole
+lesion?'' are answered from measured data in one short reply. Answers are
+deliberately terse: an operating room has no time for prose.
+
+\paragraph{Documentation writes itself.}
+Every notable event is timestamped during the case. The post-procedure report
+is generated from that record, so producing documentation costs one button
+press rather than recall after the fact.
+
+\paragraph{Everything runs locally.}
+Segmentation models and the language model both run on the workstation's own
+GPU. No images or clinical text are transmitted off the machine.
+
+\begin{warnbox}
+\textbf{How to read ``coverage''.} Coverage is a \emph{tracking-based proxy}.
+The software counts a region as treated when the tracker stops capturing it,
+because ablated tissue becomes hyperechoic and loses its previous appearance.
+That signal correlates with treatment but is not a measurement of thermal
+dose, and it can also be produced by probe motion, plane change, or tracking
+error. Treat coverage figures as a prompt to look, never as proof of
+treatment.
+\end{warnbox}
+
+%=======================================================================
+\section{System Overview}
+%=======================================================================
+
+The application runs as a \emph{single process} that serves the web interface
+and holds the segmentation models in memory, plus one local inference server
+for the language model.
+
+\begin{longtable}{@{}p{4.2cm}p{10.8cm}@{}}
+\toprule
+\textbf{Component} & \textbf{Role} \\
+\midrule
+\endhead
+MedSAM2 & Segments the lesion from the surgeon's box and tracks it through
+subsequent frames. This is the model behind every overlay on the Live
+Procedure page. \\
+\addlinespace
+Medical-SAM3 & Segments structures from a text prompt on medical ultrasound. \\
+\addlinespace
+SAM 3.1 & General-purpose text-prompted segmentation, used as a fallback when
+Medical-SAM3 returns nothing. \\
+\addlinespace
+Language model (vLLM) & Runs locally through an OpenAI-compatible interface.
+Powers the live monitor notes, the conversational answers, and both reports. \\
+\addlinespace
+Agent (LangGraph) & Decides which tool to use for a question, remembers the
+conversation, and grounds safety-critical answers in measured data. \\
+\bottomrule
+\end{longtable}
+
+All models are loaded \emph{before} the interface becomes reachable, so the
+first segmentation of a case is as fast as every later one --- there is no
+cold start in the middle of a procedure.
+
+\subsection{Starting the Application}
+
+\begin{lstlisting}[language=bash]
+cd /home/ubuntu/research/agentic-sam-v2
+bash run.sh        # uses the settings in the CONFIGURATION block
+bash run.sh 2      # ... but runs everything on GPU 2
+\end{lstlisting}
+
+Startup prints its progress and takes roughly a minute (longer the first time,
+when the language model is downloaded):
+
+\begin{lstlisting}
+[serve] LLM ready: vLLM serving Qwen/Qwen2.5-VL-7B-Instruct
+[serve] MedSAM2 loaded in 3.8s
+[serve] Medical-SAM3 loaded in 17.2s
+[serve] SAM 3.1 loaded in 8.5s
+[serve] all models warm -- starting UI on 0.0.0.0:7870
+\end{lstlisting}
+
+The interface is then available at \code{http://<workstation>:7870}. Press
+\ui{Ctrl+C} in the terminal to stop the application and the inference server
+together.
+
+\subsection{Configuration}
+
+The top of \code{run.sh} contains a configuration block; edit it rather than
+passing environment variables.
+
+\begin{longtable}{@{}p{4.4cm}p{3.4cm}p{7.2cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{Default} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{GPU} & \code{0} & GPU the whole stack uses; the first command-line
+argument overrides it. \\
+\code{VLLM\_MEM\_FRACTION} & \code{0.35} & Share of that GPU reserved for the
+language model; the segmentation models use the remainder. \\
+\code{APP\_ENV} & agentic env & Python environment running the interface and
+segmentation models. \\
+\code{VLLM\_ENV} & vllm\_m3 env & Python environment running the inference
+server. \\
+\code{LLM\_MODEL} & Qwen2.5-VL-7B & Language model served locally. Must
+support images and tool calling. \\
+\code{UI\_PORT} & \code{7870} & Port the interface listens on. \\
+\bottomrule
+\end{longtable}
+
+Two further settings are worth knowing, set in the \code{.env} file:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \code{ASAM\_PIXEL\_SPACING\_MM} --- millimetres per pixel for the
+  ultrasound preset in use. When set, all measurements are additionally
+  reported in mm and mm\textsuperscript{2}; when left at 0, measurements are
+  in pixels only.
+  \item \code{ASAM\_ABLATION\_SAMPLE\_SECONDS} --- how often the coverage
+  monitor samples the tracked lesion (default: every 5 seconds).
+\end{itemize}
+
+%=======================================================================
+\section{The Live Procedure Page}
+%=======================================================================
+
+This is the page used during the case. It shows the ultrasound frame with the
+segmentation overlay, the live assistant, the coverage metrics, and the
+recent-events list.
+
+\subsection{Step-by-Step Workflow}
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Load the video.} Choose \ui{Sample RFA video} or \ui{Upload}
+  and select a file. Frames are extracted once; the frame count and rate are
+  reported underneath.
+
+  \item \textbf{Set the RFA phase.} The \ui{RFA phase} selector offers
+  \emph{Pre-op review}, \emph{Targeting}, \emph{Ablation}, and
+  \emph{Post-ablation assessment}. The current phase is stamped on every event
+  recorded from then on, and is given to the assistant as context.
+
+  \item \textbf{Find the lesion.} Press \ui{$\blacktriangleright$ Play} to run
+  the video, and \ui{$\parallel$ Pause} when the PTMC is well seen. The
+  \ui{Sampled frame} slider can also be dragged to any frame; dragging it
+  pauses playback automatically.
+
+  \item \textbf{Mark the PTMC.} Click on the lesion in the paused frame. A
+  marker and a square target box appear. Adjust \ui{Tracking box size (px)}
+  beforehand if the default box does not enclose the lesion, and click again
+  to reposition.
+
+  \item \textbf{Start tracking.} Press \ui{Track PTMC}. The lesion is
+  segmented on the marked frame and playback resumes automatically, with the
+  overlay redrawn on each new frame as it is segmented. The manual marker
+  disappears --- the live overlay replaces it.
+
+  \item \textbf{Ablate.} Perform the ablation while the overlay follows the
+  lesion. Coverage and residual percentages update as treatment proceeds, and
+  the live assistant comments on what it observes.
+
+  \item \textbf{Pause whenever needed.} \ui{$\parallel$ Pause} halts tracking;
+  \ui{$\blacktriangleright\!\!\mid$ Continue} resumes it from where it
+  stopped. While paused, clicking the image again re-marks the lesion, and
+  pressing \ui{Track PTMC} restarts tracking from the corrected position ---
+  useful after a large probe movement.
+
+  \item \textbf{Capture anything notable.} \ui{Snapshot to event log} stores
+  the current overlaid frame together with the coverage figures.
+\end{enumerate}
+
+\begin{tipbox}
+\textbf{Choosing where to start tracking.} Start from a frame where the lesion
+margin is clearly visible. Tracking quality throughout the case depends
+heavily on the quality of that first segmentation --- it also becomes the
+baseline against which all coverage is measured.
+\end{tipbox}
+
+\subsection{Reading the Right-Hand Panel}
+
+\paragraph{Live assistant.} A short note refreshed every few seconds: a
+one-line status followed by at most three observations. It reports tracking
+stability and apparent size changes, and suggests visual checks. It never
+gives instructions.
+
+\paragraph{Tracked PTMC area.} The current segmented area in pixels, with its
+change relative to the largest area seen during the session.
+
+\paragraph{Ablation coverage and residual PTMC.} The percentage of the
+baseline lesion that appears treated, and the percentage that does not. Both
+are marked with an asterisk as proxies. The caption shows how many samples
+have been taken.
+
+\paragraph{Recent events.} The last few entries of the procedure log, each
+with its time and type: tracking events, alerts, snapshots, questions, and
+phase changes.
+
+\subsection{Asking Questions During the Procedure}
+
+Below the video, \ui{Ask during the procedure} accepts a typed question or one
+of three preset questions:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Is the PTMC tracking stable in this frame?}
+  \item \emph{Has the visible PTMC area changed recently?}
+  \item \emph{What should be visually re-checked right now?}
+\end{itemize}
+
+Asking pauses tracking; the assistant answers using the current frame and the
+procedure context, and the exchange is added to the event log. Press
+\ui{Continue} to resume. Ablation questions --- coverage, residual, how much
+is treated --- are always answered from the measured coverage data rather than
+from the model's impression of the image.
+
+%=======================================================================
+\section{The Image Analysis Page}
+%=======================================================================
+
+This page is for examining a single still image: a pre-operative capture, a
+frame of interest, or any exported ultrasound image. It is a conversation
+rather than a live feed.
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item Choose \ui{Sample PTMC image} or \ui{Upload}.
+  \item Optionally click two opposite corners to draw a box around the lesion.
+  The box is shown with its coordinates; \ui{Clear box} removes it.
+  \item Ask a question by typing it or selecting a preset (\emph{Where is the
+  PTMC in this ultrasound image?}, \emph{Describe this ultrasound image.},
+  \emph{How large is the segmented target?}).
+\end{enumerate}
+
+The assistant chooses its own approach: with a box drawn and a localization
+question asked, it segments inside the box with MedSAM2; without a box it
+segments from the text of the question; for size questions it measures the
+most recent segmentation; for background questions it may consult the web.
+The overlay appears in the conversation and in \ui{Latest segmentation
+overlay}, and each answer carries an expandable \ui{Tools used} record showing
+exactly which tool produced the numbers.
+
+The conversation has memory: follow-up questions such as ``and how large is
+it?'' are understood in the context of what was just discussed. The
+conversation is shared with the Live Procedure page, so a question asked
+during the case and a follow-up asked here belong to the same thread.
+
+%=======================================================================
+\section{The Procedure Report Page}
+%=======================================================================
+
+This page reviews the completed case and produces documentation. Everything it
+shows is reconstructed from the event log, so it can be opened mid-case as
+well.
+
+\subsection{Session Overview}
+
+Counters for events, snapshots, the final phase, and the current area relative
+to the session maximum; a chart of tracked lesion area over time; the full
+event table (time, phase, type, message); and a gallery of all snapshots.
+
+\subsection{Ablation Coverage}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Metrics} --- final coverage and residual percentages, the
+  baseline lesion area, and the number of samples taken.
+  \item \textbf{Baseline PTMC} --- the first tracked frame with its
+  segmentation, i.e.\ the lesion as it appeared before treatment.
+  \item \textbf{Ablation pattern} --- the coverage map. \textcolor{tipline}
+  {\textbf{Green}} marks baseline regions counted as treated;
+  \textcolor{red}{\textbf{red}} marks regions never observed to change, which
+  may not have been covered.
+  \item \textbf{Coverage chart} --- how coverage accumulated over the case,
+  revealing whether treatment progressed steadily or plateaued.
+\end{itemize}
+
+\subsection{Generating Reports}
+
+\ui{Generate ablation report} produces an illustrated analysis: ablation
+extent over time, the spatial pattern, an assessment of residual regions and
+where they lie, supporting signals such as echo-brightness change, and the
+limitations of the method. \ui{Generate session summary note} produces a
+structured technical summary of the whole session from the event log. Both
+can be downloaded as Markdown.
+
+\begin{tipbox}
+\textbf{Why reports are generated on demand.} All monitoring during the case
+is ordinary image arithmetic and costs nothing in language-model terms. The
+language model is invoked once per report, when the button is pressed. This
+keeps the live workflow fast and inference cost low.
+\end{tipbox}
+
+%=======================================================================
+\section{The System Status Page}
+%=======================================================================
+
+For checking the installation and diagnosing problems. It lists each model
+with its checkpoint, size, and whether it is loaded; offers manual preload
+buttons; shows GPU utilisation and memory; and reports the session
+identifier, the language-model endpoint, and the active settings including
+pixel spacing.
+
+If a model shows as absent, its weights are missing --- run
+\code{python downloader.py} to restore them. If the language-model status is
+not \emph{ready}, the inference server did not start; check
+\code{.logs/vllm.log}.
+
+%=======================================================================
+\section{Troubleshooting}
+%=======================================================================
+
+\begin{longtable}{@{}p{5.2cm}p{9.8cm}@{}}
+\toprule
+\textbf{Symptom} & \textbf{Cause and remedy} \\
+\midrule
+\endhead
+The video will not load and a Git LFS message appears &
+The file is a placeholder stub, not a real video. Copy the actual recording
+into \code{data/video/} or upload a different file. \\
+\addlinespace
+Tracking stops early &
+The tracker reached the end of the sampled frames, or lost the target. Check
+the status line under the video; re-mark the lesion and press
+\ui{Track PTMC} again. \\
+\addlinespace
+The overlay drifts off the lesion &
+Probe or plane movement outstripped the tracker. Pause, click the lesion
+again, and restart tracking; coverage accumulated so far is retained. \\
+\addlinespace
+Coverage rises without ablation &
+The tracker is losing the target for other reasons (motion, shadowing).
+Coverage is a proxy; re-mark the lesion and interpret the figures with that
+in mind. \\
+\addlinespace
+Live assistant shows an error &
+The inference server is unreachable. Check the System Status page and
+\code{.logs/vllm.log}. Tracking and segmentation continue to work without
+it. \\
+\addlinespace
+\code{FileNotFoundError: 'ninja'} at startup &
+The inference environment's \code{bin} directory is not on \code{PATH}.
+\code{run.sh} handles this; ensure \code{VLLM\_ENV} points at the environment
+that actually contains vLLM. \\
+\addlinespace
+Out-of-memory on startup &
+Lower \code{VLLM\_MEM\_FRACTION} in \code{run.sh}, or select a GPU with more
+free memory. \\
+\addlinespace
+GPU memory stays occupied after exit &
+Stop with \ui{Ctrl+C} rather than closing the terminal, so the inference
+server is shut down with the application. \\
+\bottomrule
+\end{longtable}
+
+%=======================================================================
+\section{Safety and Limitations}
+%=======================================================================
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Decision support only.} The system does not diagnose and does
+  not recommend treatment. The surgeon remains responsible for every decision.
+
+  \item \textbf{Coverage is a proxy.} It is inferred from loss of tracking
+  against the baseline lesion, not from thermal measurement. Probe motion,
+  plane change, shadowing, and tracking error can all produce the same signal.
+
+  \item \textbf{Measurements are pixel-based} unless a pixel spacing has been
+  configured for the ultrasound preset in use. Millimetre values are only as
+  accurate as that calibration.
+
+  \item \textbf{Segmentation can fail silently.} A confidently drawn outline
+  may still be wrong. Visual verification is required at every stage.
+
+  \item \textbf{Reports are technical summaries}, generated from what the
+  software recorded. They are not clinical operative notes and are not a
+  substitute for them.
+
+  \item \textbf{Only what is visible is assessed.} Lesion extent outside the
+  imaging plane, and any tissue not in view, are invisible to the system and
+  are not represented in coverage figures.
+\end{enumerate}
+
+\vspace{1em}
+\begin{warnbox}
+Not a medical device. Not cleared or approved by any regulatory body. For
+research and workflow prototyping only.
+\end{warnbox}
+
+\end{document}

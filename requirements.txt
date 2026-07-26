@@ -1,0 +1,18 @@
+streamlit
+streamlit-image-coordinates
+langgraph
+langchain
+langchain-openai
+ddgs
+torch
+torchvision
+numpy
+pillow
+imageio
+imageio-ffmpeg
+hydra-core
+iopath
+tqdm
+huggingface_hub
+# SAM3-family text-prompted models (Medical-SAM3 / SAM 3.1)
+git+https://github.com/facebookresearch/sam3.git

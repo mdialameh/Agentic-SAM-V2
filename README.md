@@ -9,6 +9,10 @@ tracking, and **Medical-SAM3 / SAM 3.1** for text-prompted segmentation.
 > Research and workflow prototyping only — decision support, not autonomous
 > diagnosis or treatment. All overlays must be verified visually.
 
+## Demo
+
+![Agentic-SAM v2 demo](demo/demo-.gif)
+
 ## Architecture (one process, no micro-services)
 
 ```
@@ -89,6 +93,11 @@ passing env vars:
 `cuda:0` — that is why `ASAM_DEVICE` stays `cuda:0` regardless of which GPU
 number you pick. Ctrl+C stops the UI and the vLLM server together and frees
 the GPU.
+
+**Starting a fresh case:** just refresh the browser (F5), or press
+**↺ New session** on the Live Procedure page. Either stops in-flight tracking,
+clears the procedure log / coverage / conversation, and keeps the segmentation
+models and vLLM server warm — no restart needed between cases.
 
 `run.sh` brings the whole stack up **warm before the UI opens**: it starts
 the vLLM server on the chosen GPU, waits until it answers, preloads MedSAM2 +
